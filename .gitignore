@@ -58,3 +58,5 @@ encog-core-cs.5.1.ReSharper.user.orig
 /*.opensdf
 Debug/
 ipch/
+*.sdf
+*.opensdf
