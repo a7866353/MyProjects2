@@ -60,3 +60,4 @@ Debug/
 ipch/
 *.sdf
 *.opensdf
+*.pdb
