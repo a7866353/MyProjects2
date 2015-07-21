@@ -43,9 +43,25 @@ namespace CUDATestProject
             DLlTools.Add(in1, in2, output);
 
 
+            TestDwtHaar();
+            /*
             DLlTools.Add(in1, in2, output);
             DLlTools.AddDll(in1, in2, output);
             DLlTools.AddDllMp(in1, in2, output);
+            */
+        }
+
+        private void TestDwtHaar()
+        {
+            int length = 4096;
+            float[] inData = new float[length];
+            float[] outData = new float[length];
+
+            for(int i=0;i<length;i++)
+            {
+                inData[i] = (float)Math.Sin(2*Math.PI * i/length);
+            }
+            DLlTools.DwtHaar1D(inData, outData);
         }
     }
 
@@ -106,6 +122,20 @@ namespace CUDATestProject
             durationDllMP = DateTime.Now - time1;
         }
 
+        [DllImport("CUDATest01.dll", EntryPoint = "DwtHaar1D_Work", CallingConvention = CallingConvention.StdCall)]
+        private static extern void DwtHaar1D_Work(IntPtr in1, IntPtr output, int size);
+        public static void DwtHaar1D(float[] in1, float[] output)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(in1, 0);
+            IntPtr out1 = Marshal.UnsafeAddrOfPinnedArrayElement(output, 0);
+
+            DateTime time1 = DateTime.Now;
+            for (int i = 0; i < 10000; i++)
+            {
+                DwtHaar1D_Work(i1, out1, output.Length);
+            }
+            durationCuda = DateTime.Now - time1;
+        }
 
     }
 
