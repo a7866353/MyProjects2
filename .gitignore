@@ -52,12 +52,13 @@ encog-core-cs.5.1.ReSharper.user.orig
 /MyProject/common
 /x64
 /*.sdf
-/Release
-/ipch
 /*.psess
 /*.opensdf
 Debug/
+Release/
 ipch/
+obj/
+bin/
 *.sdf
 *.opensdf
 *.pdb
