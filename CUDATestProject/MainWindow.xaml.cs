@@ -40,18 +40,12 @@ namespace CUDATestProject
                 output[i] = 0;
             }
 
+            // for Load DLL
             DLlTools.Add(in1, in2, output);
 
 
-            // TestDwtHaar();
-            /*
-            DLlTools.Add(in1, in2, output);
-            DLlTools.AddDll(in1, in2, output);
-            DLlTools.AddDllMp(in1, in2, output);
-            */
-
-
-            FloatSumTest();
+            // FloatSumTest();
+            SigmoidTest();
         }
 
         private void TestDwtHaar()
@@ -69,7 +63,7 @@ namespace CUDATestProject
 
         private void FloatSumTest()
         {
-            FloatSumTest[] sumTestArr = new FloatSumTest[]
+            BasicTestCase[] sumTestArr = new BasicTestCase[]
             {
                 new FloatSumTest(),
                 new FloatSumTest_AVX(),
@@ -78,14 +72,30 @@ namespace CUDATestProject
                 new FloatSumTest(),
             };
 
-            foreach (FloatSumTest test in sumTestArr)
+            foreach (BasicTestCase test in sumTestArr)
             {
                 test.RunTest();
             }
 
-            foreach (FloatSumTest test in sumTestArr)
+            foreach (BasicTestCase test in sumTestArr)
             {
                 test.RunTestMP();
+            }
+
+        }
+        private void SigmoidTest()
+        {
+            BasicTestCase[] sumTestArr = new BasicTestCase[]
+            {
+                new SigmoidTest_DLL(),
+                new SigmoidTest(),
+                new SigmoidTest_AVX(),
+                new SigmoidTest_DLL(),
+            };
+
+            foreach (BasicTestCase test in sumTestArr)
+            {
+                test.RunTest();
             }
 
         }
@@ -194,108 +204,25 @@ namespace CUDATestProject
             return sum;
         }
 
-    }
-
-    class FloatSumTest
-    {
-        private int _testDataLength = 8192;
-        private int _testCount = 100000;
-
-        protected float[] _testData;
-        protected string _testName = "C#";
-
-        public FloatSumTest()
+        [DllImport("CUDATest01.dll", EntryPoint = "ActivationSigmoid_Dll", CallingConvention = CallingConvention.StdCall)]
+        private static extern float ActivationSigmoid_Dll(IntPtr inArr, IntPtr outArr, int size);
+        public static void DllSigmoid(float[] inArr, float[] outArr)
         {
-            _testData = new float[_testDataLength];
-            for (int i = 0; i < _testData.Length; i++)
-            {
-                _testData[i] = i;
-            }
-
-        }
-        public void RunTest()
-        {
-            DateTime time1;
-            TimeSpan duration;
-            float result=0;
-
-            time1 = DateTime.Now;
-            for (int i = 0; i < _testCount; i++)
-            {
-                result = Calculate(_testData);
-            }
-            duration = DateTime.Now - time1;
-
-            System.Console.WriteLine("Result "
-                + _testName + ": "
-                + duration.TotalMilliseconds + "ms, "
-                + result);
-        }
-        public void RunTestMP()
-        {
-            DateTime time1;
-            TimeSpan duration;
-            float result = 0;
-
-            time1 = DateTime.Now;
-            Parallel.For(0, _testCount, i=>
-                {
-                    Calculate(_testData);
-                });
-            duration = DateTime.Now - time1;
-
-            System.Console.WriteLine("MP Result "
-                + _testName + ": "
-                + duration.TotalMilliseconds + "ms, "
-                + result);
-
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(inArr, 0);
+            IntPtr o1 = Marshal.UnsafeAddrOfPinnedArrayElement(outArr, 0);
+            ActivationSigmoid_Dll(i1, o1, inArr.Length);
         }
 
-        virtual protected float Calculate(float[] dataArr)
-        {
-            float sum = 0;
-            for (int i = 0; i < dataArr.Length; i++)
-                sum += dataArr[i];
 
-            return sum;
-        }
-        
-    }
-    class FloatSumTest_AVX : FloatSumTest
-    {
-        public FloatSumTest_AVX()
+        [DllImport("CUDATest01.dll", EntryPoint = "ActivationSigmoid_AVX", CallingConvention = CallingConvention.StdCall)]
+        private static extern float ActivationSigmoid_AVX(IntPtr inArr, IntPtr outArr, int size);
+        public static void AVXSigmoid(float[] inArr, float[] outArr)
         {
-            _testName = "AVX";
-        }
-
-        protected override float Calculate(float[] dataArr)
-        {
-            return AVXTools.AVXSum(dataArr);
-        }
-    }
-    class FloatSumTest_AVX4Loop : FloatSumTest
-    {
-        public FloatSumTest_AVX4Loop()
-        {
-            _testName = "AVX4Loop";
-        }
-
-        protected override float Calculate(float[] dataArr)
-        {
-            return AVXTools.AVXSum4Loop(dataArr);
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(inArr, 0);
+            IntPtr o1 = Marshal.UnsafeAddrOfPinnedArrayElement(outArr, 0);
+            ActivationSigmoid_AVX(i1, o1, inArr.Length);
         }
     }
 
-    class FloatSumTest_DLL : FloatSumTest
-    {
-        public FloatSumTest_DLL()
-        {
-            _testName = "DLL";
-        }
 
-        protected override float Calculate(float[] dataArr)
-        {
-            return AVXTools.DllSum(dataArr);
-        }
-    }
 }
