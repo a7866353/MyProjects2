@@ -29,7 +29,7 @@ namespace CUDATestProject
 
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            int testSize = 1024*100;
+            int testSize = 4096;
             int[] in1 = new int[testSize];
             int[] in2 = new int[testSize];
             int[] output = new int[testSize];
@@ -43,12 +43,15 @@ namespace CUDATestProject
             DLlTools.Add(in1, in2, output);
 
 
-            TestDwtHaar();
+            // TestDwtHaar();
             /*
             DLlTools.Add(in1, in2, output);
             DLlTools.AddDll(in1, in2, output);
             DLlTools.AddDllMp(in1, in2, output);
             */
+
+
+            FloatSumTest();
         }
 
         private void TestDwtHaar()
@@ -62,6 +65,29 @@ namespace CUDATestProject
                 inData[i] = (float)Math.Sin(2*Math.PI * i/length);
             }
             DLlTools.DwtHaar1D(inData, outData);
+        }
+
+        private void FloatSumTest()
+        {
+            FloatSumTest[] sumTestArr = new FloatSumTest[]
+            {
+                new FloatSumTest(),
+                new FloatSumTest_AVX(),
+                new FloatSumTest_AVX4Loop(),
+                new FloatSumTest_DLL(),
+                new FloatSumTest(),
+            };
+
+            foreach (FloatSumTest test in sumTestArr)
+            {
+                test.RunTest();
+            }
+
+            foreach (FloatSumTest test in sumTestArr)
+            {
+                test.RunTestMP();
+            }
+
         }
     }
 
@@ -139,4 +165,137 @@ namespace CUDATestProject
 
     }
 
+    class AVXTools
+    {
+        [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat_AVX_4loop", CallingConvention = CallingConvention.StdCall)]
+        private static extern float Sumfloat_AVX_4loop(IntPtr in1, int size);
+        public static float AVXSum4Loop(float[] arr)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
+            float sum = Sumfloat_AVX_4loop(i1, arr.Length);
+            return sum;
+        }
+
+        [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat_AVX", CallingConvention = CallingConvention.StdCall)]
+        private static extern float Sumfloat_AVX(IntPtr in1, int size);
+        public static float AVXSum(float[] arr)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
+            float sum = Sumfloat_AVX(i1, arr.Length);
+            return sum;
+        }
+
+        [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat", CallingConvention = CallingConvention.StdCall)]
+        private static extern float Sumfloat(IntPtr in1, int size);
+        public static float DllSum(float[] arr)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
+            float sum = Sumfloat(i1, arr.Length);
+            return sum;
+        }
+
+    }
+
+    class FloatSumTest
+    {
+        private int _testDataLength = 8192;
+        private int _testCount = 100000;
+
+        protected float[] _testData;
+        protected string _testName = "C#";
+
+        public FloatSumTest()
+        {
+            _testData = new float[_testDataLength];
+            for (int i = 0; i < _testData.Length; i++)
+            {
+                _testData[i] = i;
+            }
+
+        }
+        public void RunTest()
+        {
+            DateTime time1;
+            TimeSpan duration;
+            float result=0;
+
+            time1 = DateTime.Now;
+            for (int i = 0; i < _testCount; i++)
+            {
+                result = Calculate(_testData);
+            }
+            duration = DateTime.Now - time1;
+
+            System.Console.WriteLine("Result "
+                + _testName + ": "
+                + duration.TotalMilliseconds + "ms, "
+                + result);
+        }
+        public void RunTestMP()
+        {
+            DateTime time1;
+            TimeSpan duration;
+            float result = 0;
+
+            time1 = DateTime.Now;
+            Parallel.For(0, _testCount, i=>
+                {
+                    Calculate(_testData);
+                });
+            duration = DateTime.Now - time1;
+
+            System.Console.WriteLine("MP Result "
+                + _testName + ": "
+                + duration.TotalMilliseconds + "ms, "
+                + result);
+
+        }
+
+        virtual protected float Calculate(float[] dataArr)
+        {
+            float sum = 0;
+            for (int i = 0; i < dataArr.Length; i++)
+                sum += dataArr[i];
+
+            return sum;
+        }
+        
+    }
+    class FloatSumTest_AVX : FloatSumTest
+    {
+        public FloatSumTest_AVX()
+        {
+            _testName = "AVX";
+        }
+
+        protected override float Calculate(float[] dataArr)
+        {
+            return AVXTools.AVXSum(dataArr);
+        }
+    }
+    class FloatSumTest_AVX4Loop : FloatSumTest
+    {
+        public FloatSumTest_AVX4Loop()
+        {
+            _testName = "AVX4Loop";
+        }
+
+        protected override float Calculate(float[] dataArr)
+        {
+            return AVXTools.AVXSum4Loop(dataArr);
+        }
+    }
+
+    class FloatSumTest_DLL : FloatSumTest
+    {
+        public FloatSumTest_DLL()
+        {
+            _testName = "DLL";
+        }
+
+        protected override float Calculate(float[] dataArr)
+        {
+            return AVXTools.DllSum(dataArr);
+        }
+    }
 }
