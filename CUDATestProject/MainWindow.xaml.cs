@@ -44,8 +44,8 @@ namespace CUDATestProject
             DLlTools.Add(in1, in2, output);
 
 
-            // FloatSumTest();
-            SigmoidTest();
+            FloatSumTest();
+            // SigmoidTest();
         }
 
         private void TestDwtHaar()

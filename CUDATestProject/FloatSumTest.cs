@@ -6,41 +6,36 @@ using System.Threading.Tasks;
 
 namespace CUDATestProject
 {
-    class FloatSumTest : BasicTestCase
+    class FloatSumTest : Float1DTest
     {
-        private int _testDataLength = 8192;
-        private int _testCount = 100000;
+        static private int _testDataLength = 8192;
+        static FloatSumTest()
+        {
+            _sampleResultData = new double[_testDataLength];
+            _sampleTestData = new double[_testDataLength];
 
-        protected float[] _testData;
+
+            for (int i = 0; i < _sampleTestData.Length; i++)
+            {
+                _sampleTestData[i] = i;
+            }
+        }
 
         public FloatSumTest()
         {
             _testName = "C#";
+            _testCount = 100000;
+
             _testData = new float[_testDataLength];
+            _resultData = new float[_testDataLength];
+
             for (int i = 0; i < _testData.Length; i++)
             {
-                _testData[i] = i;
+                _testData[i] = (float)_sampleTestData[i];
             }
 
         }
-        override public void RunTest()
-        {
-            DateTime time1;
-            TimeSpan duration;
-            float result = 0;
-
-            time1 = DateTime.Now;
-            for (int i = 0; i < _testCount; i++)
-            {
-                result = Calculate(_testData);
-            }
-            duration = DateTime.Now - time1;
-
-            System.Console.WriteLine("Result "
-                + _testName + ": "
-                + duration.TotalMilliseconds + "ms, "
-                + result);
-        }
+      
         override public void RunTestMP()
         {
             DateTime time1;
@@ -70,6 +65,11 @@ namespace CUDATestProject
             return sum;
         }
 
+
+        protected override void Calculate()
+        {
+            Calculate(_testData);
+        }
     }
     class FloatSumTest_AVX : FloatSumTest
     {

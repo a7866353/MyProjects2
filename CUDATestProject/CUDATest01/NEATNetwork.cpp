@@ -49,6 +49,7 @@ EXTERN_C{
 				*pOut = p1[j];
 				pOut++;
 			}
+			pIn += D_DATA_BLOCK;
 		}
 
 		for (int i = 0; i < cntRem; i++)

@@ -6,43 +6,32 @@ using System.Threading.Tasks;
 
 namespace CUDATestProject
 {
-    class SigmoidTest : BasicTestCase
+    class SigmoidTest : Float1DTest
     {
-        private int _testDataLength = 8192;
-        private int _testCount = 10000;
+        static private int _testDataLength = 8192;
+        static SigmoidTest()
+        {
+            _sampleTestData = new double[_testDataLength];
+            _sampleResultData = new double[_testDataLength];
 
-        protected float[] _testData;
-        protected float[] _resultData;
-
+            for(int i=0;i<_testDataLength;i++)
+            {
+                _sampleTestData[i] = ((double)i / (_testDataLength - 1))*2-1;
+                _sampleResultData[i] = 1.0 / (1.0 + Math.Exp(-4.9 * _sampleTestData[i]));
+            }
+        }
         public SigmoidTest()
         {
             _testName = "C#";
+            _testCount = 1000;
 
             _testData = new float[_testDataLength];
             _resultData = new float[_testDataLength];
 
-            for(int i=0;i<_testDataLength;i++)
+            for (int i = 0; i < _testDataLength; i++)
             {
-                _testData[i] = (float)((double)i / (_testDataLength - 1));
+                _testData[i] = (float)_sampleTestData[i];
             }
-        }
-        public override void RunTest()
-        {
-            DateTime time1;
-            TimeSpan duration;
-            float result = 0;
-
-            time1 = DateTime.Now;
-            for (int i = 0; i < _testCount; i++)
-            {
-                Calculate(_testData, _resultData);
-            }
-            duration = DateTime.Now - time1;
-
-            System.Console.WriteLine("Result "
-                + _testName + ": "
-                + duration.TotalMilliseconds + "ms, "
-                + result);
         }
 
         public override void RunTestMP()
@@ -57,6 +46,11 @@ namespace CUDATestProject
         {
             for (int i = 0; i < dataArr.Length; i++)
                 outArr[i] = ActivationSigmoid(dataArr[i]);
+        }
+
+        protected override void Calculate()
+        {
+            Calculate(_testData, _resultData);
         }
     }
 
