@@ -11,48 +11,31 @@ namespace CUDATestProject
         static private int _testDataLength = 8192;
         static FloatSumTest()
         {
-            _sampleResultData = new double[_testDataLength];
+            _sampleResultData = new double[1];
             _sampleTestData = new double[_testDataLength];
 
+            double sum = 0;
 
             for (int i = 0; i < _sampleTestData.Length; i++)
             {
                 _sampleTestData[i] = i;
+                sum += i;
             }
+            _sampleResultData[0] = sum;
         }
 
         public FloatSumTest()
         {
-            _testName = "C#";
+            _testName = "FloatSum" + "C#";
             _testCount = 100000;
 
             _testData = new float[_testDataLength];
-            _resultData = new float[_testDataLength];
+            _resultData = new float[_sampleResultData.Length];
 
             for (int i = 0; i < _testData.Length; i++)
             {
                 _testData[i] = (float)_sampleTestData[i];
             }
-
-        }
-      
-        override public void RunTestMP()
-        {
-            DateTime time1;
-            TimeSpan duration;
-            float result = 0;
-
-            time1 = DateTime.Now;
-            Parallel.For(0, _testCount, i =>
-            {
-                Calculate(_testData);
-            });
-            duration = DateTime.Now - time1;
-
-            System.Console.WriteLine("MP Result "
-                + _testName + ": "
-                + duration.TotalMilliseconds + "ms, "
-                + result);
 
         }
 
@@ -68,14 +51,14 @@ namespace CUDATestProject
 
         protected override void Calculate()
         {
-            Calculate(_testData);
+            _resultData[0] = Calculate(_testData);
         }
     }
     class FloatSumTest_AVX : FloatSumTest
     {
         public FloatSumTest_AVX()
         {
-            _testName = "AVX";
+            _testName = "FloatSum" + "AVX";
         }
 
         protected override float Calculate(float[] dataArr)
@@ -87,7 +70,7 @@ namespace CUDATestProject
     {
         public FloatSumTest_AVX4Loop()
         {
-            _testName = "AVX4Loop";
+            _testName = "FloatSum" + "AVX4Loop";
         }
 
         protected override float Calculate(float[] dataArr)
@@ -100,7 +83,7 @@ namespace CUDATestProject
     {
         public FloatSumTest_DLL()
         {
-            _testName = "DLL";
+            _testName = "FloatSum" + "DLL";
         }
 
         protected override float Calculate(float[] dataArr)

@@ -11,6 +11,11 @@ namespace CUDATestProject
         protected string _testName = "C#";
         abstract public void RunTest();
         abstract public void RunTestMP();
+
+        abstract public string Reslut
+        {
+            get;
+        }
     }
 
     abstract class Float1DTest : BasicTestCase
@@ -24,6 +29,7 @@ namespace CUDATestProject
         private double _errorSum;
         private double[] _errorArr;
 
+        protected string _result = "";
         private TimeSpan _duration;
         public override void RunTest()
         {
@@ -34,10 +40,10 @@ namespace CUDATestProject
             }
             _duration = DateTime.Now - time1;
             _errorSum = CalculateError();
-            System.Console.WriteLine("Result "
+            _result = "Result "
                 + _testName + ": "
                 + _duration.TotalMilliseconds + "ms, "
-                + _errorSum);
+                + _errorSum + "\r\n";
         }
         abstract protected void Calculate();
 
@@ -52,6 +58,31 @@ namespace CUDATestProject
             }
             error /= _sampleResultData.Length;
             return error;
+        }
+
+        public override void RunTestMP()
+        {
+            DateTime time1;
+            TimeSpan duration;
+
+            time1 = DateTime.Now;
+            Parallel.For(0, _testCount, i =>
+            {
+                CalculateError();
+            });
+            duration = DateTime.Now - time1;
+            _errorSum = CalculateError();
+
+            _result = "MP Result "
+                + _testName + ": "
+                + duration.TotalMilliseconds + "ms, "
+                + _errorSum + "\r\n";
+
+        }
+
+        public override string Reslut
+        {
+            get { return _result; }
         }
     }
 

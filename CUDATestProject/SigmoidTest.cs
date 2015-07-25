@@ -22,7 +22,7 @@ namespace CUDATestProject
         }
         public SigmoidTest()
         {
-            _testName = "C#";
+            _testName = "Sigmoid" + "C#";
             _testCount = 1000;
 
             _testData = new float[_testDataLength];
@@ -58,7 +58,7 @@ namespace CUDATestProject
     {
         public SigmoidTest_DLL()
         {
-            _testName = "DLL";
+            _testName = "Sigmoid" + "DLL";
 
         }
 
@@ -71,7 +71,7 @@ namespace CUDATestProject
     {
         public SigmoidTest_AVX()
         {
-            _testName = "AVX";
+            _testName = "Sigmoid" + "AVX";
         }
 
         override protected void Calculate(float[] dataArr, float[] outArr)
