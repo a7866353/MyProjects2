@@ -1,6 +1,6 @@
 #include "Common.h"
-#include <math.h>
 #include <immintrin.h>
+#include <math.h>
 
 EXTERN_C{
 	static inline float ActivationSigmoid(float v)
@@ -26,7 +26,7 @@ EXTERN_C{
 
 		__m256 p0Data = _mm256_loadu_ps(f49);
 		__m256 p1Data = _mm256_loadu_ps(f10);
-
+		
 		for (int i = 0; i < cntBlock; i++)
 		{
 			// -4.9f * v
@@ -59,6 +59,52 @@ EXTERN_C{
 			pIn++;
 		}		
 	}
+	DLLTEST_API void __stdcall ActivationSigmoid_AVXPack(const float *inArr, float *outArr, int cntbuf)
+	{
+#define D_DATA_BLOCK 8
+		int cntBlock = cntbuf / D_DATA_BLOCK;
+		int cntRem = cntbuf % D_DATA_BLOCK;
+
+		const float *pIn = inArr;
+		float *pOut = outArr;
+		__declspec(align(16)) const float f49[] = { -4.9f, -4.9f, -4.9f, -4.9f, -4.9f, -4.9f, -4.9f, -4.9f };
+		__declspec(align(16)) const float f10[] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+
+		__m256 p0Data = _mm256_load_ps(f49);
+		__m256 p1Data = _mm256_load_ps(f10);
+
+		for (int i = 0; i < cntBlock; i++)
+		{
+			// -4.9f * v
+			__m256 inData = _mm256_loadu_ps(pIn);
+			__m256 d1 = _mm256_mul_ps(inData, p0Data);
+
+			// exp(-4.9f * v)
+			float *p1 = (float *)&d1;
+			for (int j = 0; j < D_DATA_BLOCK; j++)
+			{
+				p1[j] = exp(p1[j]);
+			}
+
+			// 
+			d1 = _mm256_add_ps(d1, p1Data);
+			d1 = _mm256_div_ps(p1Data, d1);
+
+			for (int j = 0; j < D_DATA_BLOCK; j++)
+			{
+				*pOut = p1[j];
+				pOut++;
+			}
+			pIn += D_DATA_BLOCK;
+		}
+
+		for (int i = 0; i < cntRem; i++)
+		{
+			*pOut = ActivationSigmoid(*pIn);
+			pOut++;
+			pIn++;
+		}
+	}
 
 	struct NEATLink
 	{
@@ -72,7 +118,7 @@ EXTERN_C{
 		float *pBufStart;
 		int length;
 	};
-	struct NEATNetworkParm
+	struct NEATNetworkAVXParm
 	{
 		int linkCount;
 		NEATLink *link;
@@ -149,7 +195,7 @@ EXTERN_C{
 	}
 
 
-	static void InternalCompute(NEATNetworkParm *parm)
+	static void InternalCompute(NEATNetworkAVXParm *parm)
 	{
 		NEATLink *pLink, *pLinkBlockStart;
 
@@ -158,6 +204,7 @@ EXTERN_C{
 		float **outputPtrArr;
 
 		OutputBufferCtrl *pOutBufferCtrl;
+
 
 		float postActArr[BLOCK_LENGTH];
 		float weightArr[BLOCK_LENGTH];
@@ -183,11 +230,11 @@ EXTERN_C{
 			for (int j = 0; j < cntBlockLen; j++)
 			{
 				postActArr[j] = parm->postActivation[pLink->fromNeuron];
-				weightArr[j] = parm->postActivation[pLink->fromNeuron] * pLink->weight;
+				weightArr[j] = pLink->weight;
 				pLink++;
 			}
-			__m256 post = _mm256_load_ps(postActArr);
-			__m256 weight = _mm256_load_ps(weightArr);
+			__m256 post = _mm256_loadu_ps(postActArr);
+			__m256 weight = _mm256_loadu_ps(weightArr);
 			__m256 pre = _mm256_mul_ps(post, weight);
 			_mm256_storeu_ps(preArr, pre);
 
@@ -221,7 +268,7 @@ EXTERN_C{
 		}
 	}
 
-	static void Compute(NEATNetworkParm *parm)
+	static void Compute(NEATNetworkAVXParm *parm)
 	{
 		// clear
 		for (int i = 0; i < parm->neuronCount; i++)
@@ -250,7 +297,7 @@ EXTERN_C{
 		}
 	}
 
-	DLLTEST_API void __stdcall DllTools_NEATNetwork_AVX(NEATNetworkParm param)
+	DLLTEST_API void __stdcall DllTools_NEATNetwork_AVX(NEATNetworkAVXParm param)
 	{
 		Compute(&param);
 	}

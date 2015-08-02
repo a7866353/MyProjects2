@@ -85,6 +85,37 @@ EXTERN_C{
 
 		return s;
 	}
+	DLLTEST_API float __stdcall Sumfloat_AVXPack(const float *inArr, int cntbuf)
+	{
+		float s = 0;
+		int i;
+		int nBlockWidth = 8;
+		int cntBlock = cntbuf / nBlockWidth;
+		int cntRem = cntbuf % nBlockWidth;
+
+		__m256 yfsSum = _mm256_setzero_ps();
+		__m256 yfsLoad;
+		const float *p = inArr;
+		const float *q;
+
+		for (i = 0; i < cntBlock; i++)
+		{
+			yfsLoad = _mm256_load_ps(p);
+			yfsSum = _mm256_add_ps(yfsSum, yfsLoad);
+			p += nBlockWidth;
+		}
+
+		q = (const float*)&yfsSum;
+		s = q[0] + q[1] + q[2] + q[3] + q[4] + q[5] + q[6] + q[7];
+
+		for (i = 0; i < cntRem; i++)
+		{
+			s += p[i];
+			p++;
+		}
+
+		return s;
+	}
 
 	DLLTEST_API float __stdcall Sumfloat(const float *inArr, int cntbuf)
 	{

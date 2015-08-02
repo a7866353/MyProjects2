@@ -8,7 +8,7 @@ namespace CUDATestProject
 {
     class SigmoidTest : Float1DTest
     {
-        static private int _testDataLength = 8192;
+        static private int _testDataLength = 1024;
         static SigmoidTest()
         {
             _sampleTestData = new double[_testDataLength];
@@ -24,6 +24,10 @@ namespace CUDATestProject
         {
             _testName = "Sigmoid" + "C#";
             _testCount = 1000;
+            _description = "[Sigmoid] " +
+                "DataLength:" + _testDataLength +
+                ", TestCount:" + _testCount +
+                "\r\n";
 
             _testData = new float[_testDataLength];
             _resultData = new float[_testDataLength];

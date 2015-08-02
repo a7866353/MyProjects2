@@ -29,7 +29,7 @@ namespace CUDATestProject
 
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            int testSize = 4096;
+            int testSize = 32;
             int[] in1 = new int[testSize];
             int[] in2 = new int[testSize];
             int[] output = new int[testSize];
@@ -44,13 +44,14 @@ namespace CUDATestProject
             DLlTools.Add(in1, in2, output);
 
 
-            FloatSumTest();
+            // FloatSumTest();
             // SigmoidTest();
+            NEATNetworkTest();
         }
 
         private void TestDwtHaar()
         {
-            int length = 4096;
+            int length = 8192;
             float[] inData = new float[length];
             float[] outData = new float[length];
 
@@ -65,10 +66,20 @@ namespace CUDATestProject
         {
             BasicTestCase[] sumTestArr = new BasicTestCase[]
             {
+                /*
                 new FloatSumTest(),
                 new FloatSumTest_AVX(),
                 new FloatSumTest_AVX4Loop(),
                 new FloatSumTest_DLL(),
+                */
+                new FloatSumTest_AVX(),
+                new FloatSumTest_AVXPack(),
+                new FloatSumTest_AVX4Loop(),
+                new FloatSumTest_DLL(),
+
+                // new FloatSumTest_CUDA(),
+                new FloatSumTest_CUDA2(),
+                new FloatSumTest_CUDA3(),
             };
 
             ResultTestBlock.Text = "";
@@ -82,13 +93,14 @@ namespace CUDATestProject
 
             foreach (BasicTestCase test in sumTestArr)
             {
-                test.RunTestMP();
+                // test.RunTestMP();
                 ResultTestBlock.Text += test.Reslut;
             }
 
         }
         private void SigmoidTest()
         {
+            ResultTestBlock.Text = "";
             BasicTestCase[] sumTestArr = new BasicTestCase[]
             {
                 new SigmoidTest_DLL(),
@@ -96,13 +108,35 @@ namespace CUDATestProject
                 new SigmoidTest_AVX(),
                 new SigmoidTest_DLL(),
             };
+            ResultTestBlock.Text += sumTestArr[0].Description;
 
             foreach (BasicTestCase test in sumTestArr)
             {
                 test.RunTest();
+                ResultTestBlock.Text += test.Reslut;
             }
+            ResultTestBlock.Text += "\r\n=================\r\n\r\n";
 
         }
+        private void NEATNetworkTest()
+        {
+            BasicTestCase[] testArr = new BasicTestCase[]
+            {
+                new NEATNetworkTest(),
+                new NEATNetworkTest_DLL(),
+            };
+
+            ResultTestBlock.Text = "";
+            ResultTestBlock.Text += testArr[0].Description;
+            foreach (BasicTestCase test in testArr)
+            {
+                test.RunTest();
+                ResultTestBlock.Text += test.Reslut;
+
+            }
+            ResultTestBlock.Text += "\r\n=================\r\n\r\n";
+        }
+
     }
 
 
@@ -123,7 +157,7 @@ namespace CUDATestProject
             IntPtr out1 = Marshal.UnsafeAddrOfPinnedArrayElement(output, 0);
 
             DateTime time1 = DateTime.Now;
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < 1; i++)
             {
                 TestCuda_Add(i1, i2, out1, output.Length);
             }
@@ -199,12 +233,29 @@ namespace CUDATestProject
             return sum;
         }
 
+        [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat_AVXPack", CallingConvention = CallingConvention.StdCall)]
+        private static extern float Sumfloat_AVXPack(IntPtr in1, int size);
+        public static float AVXPackSum(float[] arr)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
+            float sum = Sumfloat_AVXPack(i1, arr.Length);
+            return sum;
+        }
+
         [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat", CallingConvention = CallingConvention.StdCall)]
         private static extern float Sumfloat(IntPtr in1, int size);
         public static float DllSum(float[] arr)
         {
             IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
             float sum = Sumfloat(i1, arr.Length);
+            return sum;
+        }
+        [DllImport("CUDATest01.dll", EntryPoint = "Sumfloat_CUDA", CallingConvention = CallingConvention.StdCall)]
+        private static extern float Sumfloat_CUDA(IntPtr in1, int size);
+        public static float CUDASum(float[] arr)
+        {
+            IntPtr i1 = Marshal.UnsafeAddrOfPinnedArrayElement(arr, 0);
+            float sum = Sumfloat_CUDA(i1, arr.Length);
             return sum;
         }
 
@@ -227,210 +278,5 @@ namespace CUDATestProject
             ActivationSigmoid_AVX(i1, o1, inArr.Length);
         }
     }
-
-
-
-    class NEATLink
-    {
-        public int FromNeuron;
-        public int ToNeuron;
-        public double Weight;
-    }
-    class NEATNetwork
-    {
-        public NEATLink[] Links;
-
-        public int OutputIndex;
-        public int InputCount;
-        public int OutputCount;
-
-        public int ActivationCycles = 4;
-
-        public double[] PostActivation;
-        public double[] PreActivation;
-
-        public double[] Compute(double[] input)
-        {
-            var result = new double[OutputCount];
-
-            // clear from previous
-            Fill(PreActivation, 0.0);
-            Fill(PostActivation, 0.0);
-            PostActivation[0] = 1.0;
-
-            // copy input
-            for (int i = 0; i < InputCount; i++)
-            {
-                PostActivation[i + 1] = input[i];
-            }
-
-            // iterate through the network activationCycles times
-            for (int i = 0; i < ActivationCycles; ++i)
-            {
-                InternalCompute();
-            }
-
-            // copy output
-            for (int i = 0; i < OutputCount; i++)
-            {
-                result[i] = PostActivation[OutputCount + i];
-            }
-
-            return result;
-        }
-        private void InternalCompute()
-        {
-            foreach (NEATLink t in Links)
-            {
-                PreActivation[t.ToNeuron] += PostActivation[t.FromNeuron] * t.Weight;
-            }
-
-            for (int j = OutputIndex; j < PreActivation.Length; j++)
-            {
-                PostActivation[j] = PreActivation[j];
-                PostActivation[j] = ActivationSigmoid(PostActivation[j]);
-                PreActivation[j] = 0.0F;
-            }
-        }
-        private double ActivationSigmoid(double v)
-        {
-            return 1.0 / (1.0 + Math.Exp(-4.9 * v));
-        }
-
-        private void Fill(double[] dataArr, double value)
-        {
-            for (int i = 0; i < dataArr.Length; i++)
-                dataArr[i] = value;
-        }
-    }
-    class NetworkFloatDllTools
-    {
-        [StructLayout(LayoutKind.Sequential)]
-        struct Link
-        {
-            public int toNeuron;
-            public int fromNeuron;
-            public float weight;
-        };
-        [StructLayout(LayoutKind.Sequential)]
-        struct OutputBufferCtrl
-        {
-            IntPtr pBuf;
-            IntPtr pBufStart;
-            int length;
-        };
-        [StructLayout(LayoutKind.Sequential)]
-        struct NEATNetworkParm
-        {
-            public int linkCount;
-            public IntPtr link;
-
-            public int neuronCount;
-            public int outputIndex;
-            public IntPtr preActivation;
-            public IntPtr postActivation;
-
-            public int outBufferCtrlCount;
-            public IntPtr outBufferCtrl;
-
-
-            public int inputCount;
-            public IntPtr input;
-
-            public int outputCount;
-            public IntPtr output;
-
-            public int activationCycles;
-        };
-
-        [DllImport("CUDATest01.dll", EntryPoint = "DllTools_NEATNetwork_AVX", CallingConvention = CallingConvention.StdCall)]
-        private static extern void DllTools_NEATNetwork_AVX(NEATNetworkParm param);
-
-        private NEATNetworkParm parm;
-        private Link[] _linkArr;
-        private OutputBufferCtrl[] _outBufferCtrlArr;
-        private double[] _outputBuffer;
-        public NetworkFloatDllTools(NEATNetwork network)
-        {
-            parm = new NEATNetworkParm();
-
-            parm.linkCount = network.Links.Length;
-            _linkArr = new Link[parm.linkCount];
-            int index = 0;
-            foreach (NEATLink l in network.Links)
-            {
-                _linkArr[index].fromNeuron = l.FromNeuron;
-                _linkArr[index].toNeuron = l.ToNeuron;
-                _linkArr[index].weight = (float)l.Weight;
-                index++;
-            }
-            parm.link = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(Link)) * parm.linkCount);
-            IntPtr pAddr = parm.link;
-            for (int i = 0; i < _linkArr.Length; i++)
-            {
-                Marshal.StructureToPtr(_linkArr[i], pAddr, false);
-                pAddr += Marshal.SizeOf(typeof(Link));
-            }
-
-            parm.neuronCount = network.PostActivation.Length;
-            parm.outputIndex = network.OutputIndex;
-            parm.preActivation = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(float)) * parm.neuronCount);
-            parm.postActivation = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(float)) * parm.neuronCount);
-
-            parm.outBufferCtrlCount = network.PreActivation.Length - network.OutputIndex;
-            _outBufferCtrlArr = new OutputBufferCtrl[parm.outBufferCtrlCount];
-            parm.outBufferCtrl = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(OutputBufferCtrl)) * parm.outBufferCtrlCount);
-            IntPtr pAddr2 = parm.outBufferCtrl;
-            for (int i = 0; i < _outBufferCtrlArr.Length; i++)
-            {
-                Marshal.StructureToPtr(_outBufferCtrlArr[i], pAddr2, false);
-                pAddr += Marshal.SizeOf(typeof(OutputBufferCtrl));
-            }
-
-            parm.inputCount = network.InputCount;
-            parm.input = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(double)) * parm.inputCount);
-
-            parm.outputCount = network.OutputCount;
-            _outputBuffer = new double[network.OutputCount];
-            parm.output = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(double)) * parm.outputCount);
-
-            parm.activationCycles = network.ActivationCycles;
-
-        }
-        ~NetworkFloatDllTools()
-        {
-            Marshal.FreeHGlobal(parm.preActivation);
-            Marshal.FreeHGlobal(parm.postActivation);
-            Marshal.FreeHGlobal(parm.input);
-            Marshal.FreeHGlobal(parm.output);
-            Marshal.FreeHGlobal(parm.link);
-        }
-
-        public double[] Compute(double[] input)
-        {
-            // parm.link = Marshal.UnsafeAddrOfPinnedArrayElement(_linkArr, 0);
-            // parm.input = Marshal.UnsafeAddrOfPinnedArrayElement(_inputBuffer, 0);
-            // parm.output = _outputBuffer, 0);
-
-            Marshal.Copy(input, 0, parm.input, input.Length);
-
-            DllTools_NEATNetwork_AVX(parm);
-
-            Marshal.Copy(parm.output, _outputBuffer, 0, _outputBuffer.Length);
-            return _outputBuffer;
-        }
-
-        public int InputCount
-        {
-            get { return parm.inputCount; }
-        }
-
-        public int OutputCount
-        {
-            get { return parm.outputCount; }
-        }
-    }
-
-
 
 }

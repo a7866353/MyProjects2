@@ -16,11 +16,16 @@ namespace CUDATestProject
         {
             get;
         }
+
+        abstract public string Description
+        {
+            get;
+        }
     }
 
     abstract class Float1DTest : BasicTestCase
     {
-        protected int _testCount = 1000;
+        protected long _testCount = 1000;
         protected float[] _testData;
         protected float[] _resultData;
         static protected double[] _sampleTestData;
@@ -30,11 +35,12 @@ namespace CUDATestProject
         private double[] _errorArr;
 
         protected string _result = "";
+        protected string _description = "";
         private TimeSpan _duration;
         public override void RunTest()
         {
             DateTime time1 = DateTime.Now;
-            for (int i = 0; i < _testCount; i++)
+            for (long i = 0; i < _testCount; i++)
             {
                 Calculate();
             }
@@ -68,7 +74,7 @@ namespace CUDATestProject
             time1 = DateTime.Now;
             Parallel.For(0, _testCount, i =>
             {
-                CalculateError();
+                Calculate();
             });
             duration = DateTime.Now - time1;
             _errorSum = CalculateError();
@@ -83,6 +89,11 @@ namespace CUDATestProject
         public override string Reslut
         {
             get { return _result; }
+        }
+
+        public override string Description
+        {
+            get { return _description; }
         }
     }
 
